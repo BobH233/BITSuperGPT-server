@@ -55,9 +55,9 @@ REDIS_URL=redis://your-redis-server:6379(你的本地配置redis服务器链接)
 
 PORT=3001(服务器后端运行的端口地址)
 
-JWT_SECRET=your_jwt_secret_key（使用openssl rand -base64 64生成一个jwt密匙，注意不要泄露！也不要放到客户端，客户端没位置给你放这个的）
+JWT_SECRET=your_jwt_secret_key（使用openssl rand -hex 64生成一个jwt密匙，注意不要泄露！也不要放到客户端，客户端没位置给你放这个的）
 
-ENCRYPTION_KEY=<后端配置的加密密匙，注意必须是32位长度字符串，客户端要和这个配置一致>
+ENCRYPTION_KEY=<后端配置的加密密匙，注意必须是32位长度字符串，客户端要和这个配置一致，你可以用openssl rand -hex 16生成>
 
 ```
 
