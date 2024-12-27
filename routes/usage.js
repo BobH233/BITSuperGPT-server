@@ -99,6 +99,7 @@ router.get('/all-users-usage', authenticateToken, (req, res) => {
             u.username,
             u.nickname,
             u.is_admin,
+            u.userGroup,
             cu.model,
             COUNT(*) AS usage_count
         FROM 
@@ -125,6 +126,7 @@ router.get('/all-users-usage', authenticateToken, (req, res) => {
             user_id: row.user_id,
             username: row.username,
             nickname: row.nickname,
+            userGroup: row.userGroup,
             is_admin: Boolean(row.is_admin),
             model: row.model,
             usage_count: row.usage_count
