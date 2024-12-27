@@ -267,4 +267,36 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     });
 });
 
+router.get('/users', authenticateToken, authorizeAdmin, (req, res) => {
+    const db = new sqlite3.Database('./database.sqlite', (err) => {
+        if (err) {
+            console.error('无法连接到数据库', err);
+            return res.status(500).json({ message: 'Database connection error' });
+        }
+    });
+
+    // 查询所有用户，排除密码字段
+    const query = `
+        SELECT id, username, nickname, is_admin, userGroup
+        FROM users
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('查询用户时出错:', err);
+            db.close();
+            return res.status(500).json({ message: 'Database query error' });
+        }
+
+        db.close((closeErr) => {
+            if (closeErr) {
+                console.error('关闭数据库时出错:', closeErr);
+                // 不返回错误给客户端，因为数据已经成功获取
+            }
+        });
+
+        res.json({ users: rows });
+    });
+});
+
 module.exports = router;
