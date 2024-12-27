@@ -1,3 +1,5 @@
 [
-    { "account": "<你要共享的ChatGPT账户>", "password": "<你要共享的ChatGPT的账户密码>" }
+    { "account": "<你要共享给UserGroup1的ChatGPT账户>", "password": "<你要共享给UserGroup1的ChatGPT的账户密码>", "userGroup": 1 },
+    { "account": "<你要共享给UserGroup4的ChatGPT账户>", "password": "<你要共享给UserGroup4的ChatGPT的账户密码>", "userGroup": 4  },
+    { "account": "<你要共享给UserGroup666的ChatGPT账户>", "password": "<你要共享给UserGroup666的ChatGPT的账户密码>", "userGroup": 666  }
 ]

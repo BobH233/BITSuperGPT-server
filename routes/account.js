@@ -26,12 +26,18 @@ const gameAccountsPath = path.join(__dirname, '../config/accounts.json');
 
 // 获取游戏账号密码接口
 router.get('/gpt-credentials', authenticateToken, (req, res) => {
+    const userGroup = req.user.user_group;
+    // console.log("userGroup:", userGroup);
     fs.readFile(gameAccountsPath, 'utf8', (err, data) => {
         if (err) {
             return res.status(500).json({ message: 'Error reading game accounts file' });
         }
         try {
-            const accounts = JSON.parse(data);
+            const allAccounts = JSON.parse(data);
+            const accounts = [];
+            allAccounts.forEach(elem => {
+                if(elem.userGroup == userGroup) accounts.push(elem);
+            });
             const encryptedAccounts = accounts.map(acc => ({
                 account: encrypt(acc.account),
                 password: encrypt(acc.password)

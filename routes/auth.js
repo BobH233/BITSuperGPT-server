@@ -41,7 +41,7 @@ router.post('/login', (req, res) => {
 
             // 生成 JWT，包含 nickname
             const token = jwt.sign(
-                { id: user.id, username: user.username, nickname: user.nickname, is_admin: user.is_admin, jti },
+                { id: user.id, username: user.username, nickname: user.nickname, is_admin: user.is_admin, user_group: user.userGroup, jti },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -137,31 +137,57 @@ router.post('/logout', authenticateToken, async (req, res) => {
 
 // 添加用户接口（仅管理员）
 router.post('/add-user', authenticateToken, authorizeAdmin, (req, res) => {
-    const { username, password, nickname, is_admin } = req.body;
-    if (!username || !password || !nickname) {
-        return res.status(400).json({ message: 'Username, password, and nickname are required' });
+    const { username, password, nickname, is_admin, userGroup } = req.body;
+
+    if (!username || !password || !nickname || userGroup === undefined) {
+        return res.status(400).json({ message: 'Username, password, nickname, and userGroup are required' });
     }
-    const db = new sqlite3.Database('./database.sqlite');
+
+    // 验证 userGroup 是否为整数
+    const userGroupInt = parseInt(userGroup, 10);
+    if (isNaN(userGroupInt)) {
+        return res.status(400).json({ message: 'userGroup must be an integer' });
+    }
+
+    const db = new sqlite3.Database('./database.sqlite', (err) => {
+        if (err) {
+            console.error('无法连接到数据库', err);
+            return res.status(500).json({ message: 'Database connection error' });
+        }
+    });
+
     bcrypt.hash(password, 10, (err, hash) => {
         if (err) {
             db.close();
+            console.error('哈希密码时出错:', err);
             return res.status(500).json({ message: 'Error hashing password' });
         }
-        db.run(
-            `INSERT INTO users (username, password, nickname, is_admin) VALUES (?, ?, ?, ?)`,
-            [username, hash, nickname, is_admin ? 1 : 0],
-            function (err) {
-                if (err) {
-                    db.close();
-                    if (err.code === 'SQLITE_CONSTRAINT') {
-                        return res.status(400).json({ message: 'Username already exists' });
-                    }
-                    return res.status(500).json({ message: 'Error adding user' });
-                }
+
+        const insertQuery = `
+            INSERT INTO users (username, password, nickname, is_admin, userGroup)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        const params = [username, hash, nickname, is_admin ? 1 : 0, userGroupInt];
+
+        db.run(insertQuery, params, function (err) {
+            if (err) {
                 db.close();
-                res.json({ message: 'User added successfully', user_id: this.lastID });
+                // console.error('插入新用户时出错:', err);
+                if (err.code === 'SQLITE_CONSTRAINT') {
+                    return res.status(400).json({ message: 'Username already exists' });
+                }
+                return res.status(500).json({ message: 'Error adding user' });
             }
-        );
+
+            db.close((closeErr) => {
+                if (closeErr) {
+                    console.error('关闭数据库时出错:', closeErr);
+                    // 不返回错误给客户端，因为用户已经成功添加
+                }
+            });
+
+            res.status(201).json({ message: 'User added successfully', user_id: this.lastID });
+        });
     });
 });
 
