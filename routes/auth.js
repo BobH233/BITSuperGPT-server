@@ -191,6 +191,71 @@ router.post('/add-user', authenticateToken, authorizeAdmin, (req, res) => {
     });
 });
 
+/**
+ * 删除用户（仅管理员可调用）
+ */
+router.post('/delete-user/:id', authenticateToken, authorizeAdmin, (req, res) => {
+    const userId = req.params.id;
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: '缺少用户ID。' });
+    }
+
+    const db = new sqlite3.Database('./database.sqlite');
+
+    db.serialize(() => {
+        // 开始事务
+        db.run('BEGIN TRANSACTION');
+
+        // 删除与用户相关的使用记录
+        db.run('DELETE FROM chatgpt_usage WHERE user_id = ?', [userId], function(err) {
+            if (err) {
+                db.run('ROLLBACK');
+                db.close();
+                console.error('删除用户使用记录时出错:', err);
+                return res.status(500).json({ success: false, message: '删除用户使用记录时出错。' });
+            }
+
+            // 删除用户
+            db.run('DELETE FROM users WHERE id = ?', [userId], function(err) {
+                if (err) {
+                    db.run('ROLLBACK');
+                    db.close();
+                    console.error('删除用户时出错:', err);
+                    return res.status(500).json({ success: false, message: '删除用户时出错。' });
+                }
+
+                // 提交事务
+                db.run('COMMIT', async(err) => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        db.close();
+                        console.error('提交事务时出错:', err);
+                        return res.status(500).json({ success: false, message: '提交事务时出错。' });
+                    }
+                    // 吊销所有现有的令牌
+                    const userTokensKey = `user:${userId}:tokens`;
+                    try {
+                        const jtis = await redisClient.sMembers(userTokensKey);
+                        if (jtis.length > 0) {
+                            const pipeline = redisClient.multi();
+                            jtis.forEach(jti => {
+                                pipeline.del(`token:${jti}`);
+                            });
+                            pipeline.del(userTokensKey);
+                            await pipeline.exec();
+                        }
+                    } catch (redisErr) {
+                        console.error('吊销令牌时出错:', redisErr);
+                    }
+                    db.close();
+                    res.json({ success: true, message: '用户已成功删除。' });
+                });
+            });
+        });
+    });
+});
+
 router.post('/change-password', authenticateToken, async (req, res) => {
     const { oldPassword, newPassword } = req.body;
 
@@ -298,5 +363,6 @@ router.get('/users', authenticateToken, authorizeAdmin, (req, res) => {
         res.json({ users: rows });
     });
 });
+
 
 module.exports = router;
